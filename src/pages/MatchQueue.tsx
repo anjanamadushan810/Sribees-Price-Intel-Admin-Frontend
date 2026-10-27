@@ -1,0 +1,88 @@
+import { LinkOutlined } from '@ant-design/icons'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { App, Button, Card, Empty, Progress, Select, Space, Tag, Typography } from 'antd'
+import { useState } from 'react'
+import { api, errorMessage } from '../api/client'
+import { useCompetitors } from '../api/lookups'
+import { formatMoney } from '../api/money'
+import type { MatchQueueItem } from '../api/types'
+import { useAuth } from '../auth/AuthContext'
+import PageHeader from '../components/PageHeader'
+
+export default function MatchQueue() {
+  const { can } = useAuth()
+  const { message } = App.useApp()
+  const queryClient = useQueryClient()
+  const competitors = useCompetitors()
+  const [competitorId, setCompetitorId] = useState<number>()
+  const decide = can('matches.decide')
+
+  const queue = useQuery({
+    queryKey: ['match-queue', competitorId],
+    queryFn: async () => (await api.get<MatchQueueItem[]>('/matches/queue', { params: { competitor_id: competitorId, limit: 60 } })).data,
+  })
+  const act = useMutation({
+    mutationFn: ({ id, verb }: { id: string; verb: 'confirm' | 'reject' }) => api.post(`/matches/${id}/${verb}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['match-queue'] })
+      queryClient.invalidateQueries({ queryKey: ['summary'] })
+    },
+    onError: (e) => message.error(errorMessage(e)),
+  })
+
+  // One card per product and shop: its candidates side by side, best first.
+  const groups = new Map<string, MatchQueueItem[]>()
+  for (const m of queue.data ?? []) {
+    const key = `${m.product_id}:${m.competitor_id}`
+    groups.set(key, [...(groups.get(key) ?? []), m])
+  }
+
+  return (
+    <>
+      <PageHeader title="Match queue"
+        subtitle="Is their item the same product as ours? Confirm once; the system remembers."
+        extra={
+          <Select allowClear placeholder="All shops" style={{ width: 200 }} value={competitorId} onChange={setCompetitorId}
+            options={(competitors.data ?? []).filter((c) => c.kind === 'scraped')
+              .map((c) => ({ value: c.competitor_id, label: c.name }))} />
+        } />
+      {!queue.isLoading && groups.size === 0 && <Empty description="Nothing to check" />}
+      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        {[...groups.values()].map((candidates) => {
+          const first = candidates[0]
+          return (
+            <Card key={`${first.product_id}:${first.competitor_id}`} size="small"
+              title={<span>{first.product_name} {first.product_size && <Tag>{first.product_size}</Tag>}</span>}
+              extra={<Tag>{first.competitor}</Tag>}>
+              <Space direction="vertical" style={{ width: '100%' }}>
+                {candidates.map((m) => (
+                  <div key={m.match_id} className="candidate">
+                    <Progress type="circle" size={38} percent={Math.round(Number(m.score) * 100)} />
+                    <div style={{ flex: 1 }}>
+                      <div>
+                        {m.item.name}{' '}
+                        {m.item.url && <a href={m.item.url} target="_blank" rel="noreferrer noopener"><LinkOutlined /></a>}
+                      </div>
+                      <Typography.Text type="secondary" className="num">
+                        Rs {m.item.last_price ? formatMoney(m.item.last_price) : '—'}
+                        {m.item.last_mrp && ` · MRP ${formatMoney(m.item.last_mrp)}`}
+                        {!m.item.in_stock && ' · out of stock'}
+                      </Typography.Text>
+                    </div>
+                    {decide && (
+                      <Space>
+                        <Button type="primary" size="small" loading={act.isPending && act.variables?.id === m.match_id}
+                          onClick={() => act.mutate({ id: m.match_id, verb: 'confirm' })}>Same product</Button>
+                        <Button size="small" onClick={() => act.mutate({ id: m.match_id, verb: 'reject' })}>No</Button>
+                      </Space>
+                    )}
+                  </div>
+                ))}
+              </Space>
+            </Card>
+          )
+        })}
+      </Space>
+    </>
+  )
+}
