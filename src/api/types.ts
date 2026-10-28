@@ -4,6 +4,7 @@ export interface Branch {
   branch_id: string
   name: string
   is_active: boolean
+  products: number
 }
 
 export interface User {

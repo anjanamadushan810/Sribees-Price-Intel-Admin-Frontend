@@ -2,7 +2,8 @@ import { Select } from 'antd'
 import { useEffect } from 'react'
 import { useBranches } from '../api/lookups'
 
-/** The branch whose prices are shown. Picks the first branch the user may see. */
+/** The branch whose prices are shown. The server lists the branch stocking the most
+ *  products first, so the default is the one that sells online, never a fixed name. */
 export default function BranchPicker({ value, onChange }: {
   value: string | undefined
   onChange: (branchId: string) => void
@@ -14,7 +15,11 @@ export default function BranchPicker({ value, onChange }: {
   }, [value, list, onChange])
   if (list.length <= 1) return null
   return (
-    <Select style={{ width: 200 }} value={value} onChange={onChange}
-      options={list.map((b) => ({ value: b.branch_id, label: b.name }))} />
+    <Select style={{ width: 240 }} value={value} onChange={onChange}
+      options={list.map((b) => ({
+        value: b.branch_id,
+        label: `${b.name} · ${b.products} products`,
+        disabled: b.products === 0 && b.branch_id !== value,
+      }))} />
   )
 }
