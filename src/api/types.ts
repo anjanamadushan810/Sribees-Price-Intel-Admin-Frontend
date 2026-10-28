@@ -147,6 +147,13 @@ export interface MatchQueueItem {
   item: Item
 }
 
+export interface MatchQueuePage {
+  items: MatchQueueItem[]
+  total: number
+  page: number
+  pages: number
+}
+
 export type SuggestionStatus = 'pending' | 'accepted' | 'rejected' | 'superseded' | 'failed' | 'applied'
 
 export interface Suggestion {

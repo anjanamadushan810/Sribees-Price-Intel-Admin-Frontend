@@ -11,9 +11,11 @@ import {
   TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { Avatar, Button, Dropdown, Layout, Menu, Typography, theme } from 'antd'
+import { useQuery } from '@tanstack/react-query'
+import { Avatar, Badge, Button, Dropdown, Layout, Menu, Typography, theme } from 'antd'
 import type { ItemType } from 'antd/es/menu/interface'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { api } from '../api/client'
 import { ROLE_LABEL } from '../api/lookups'
 import { useAuth } from '../auth/AuthContext'
 
@@ -45,10 +47,23 @@ export default function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { token } = theme.useToken()
+  // How many products wait for a yes / no, shown on the menu so the queue is found.
+  const waiting = useQuery({
+    queryKey: ['match-queue-count'],
+    queryFn: async () => (await api.get<{ waiting: number }>('/matches/queue/count')).data.waiting,
+    enabled: can('matches.read'),
+    refetchInterval: 60_000,
+  })
 
   const items: ItemType[] = NAV.flatMap<ItemType>((g) => {
     const visible = g.items.filter((n) => !n.permission || can(n.permission))
-      .map((n) => ({ key: n.key, icon: n.icon, label: n.label }))
+      .map((n) => ({
+        key: n.key,
+        icon: n.icon,
+        label: n.key === '/matches' && waiting.data
+          ? <span>{n.label} <Badge count={waiting.data} overflowCount={999} size="small" /></span>
+          : n.label,
+      }))
     if (!visible.length) return []
     return g.group ? [{ type: 'group' as const, key: g.group, label: g.group, children: visible }] : visible
   })

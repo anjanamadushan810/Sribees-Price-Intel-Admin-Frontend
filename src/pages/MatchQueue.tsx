@@ -1,11 +1,11 @@
 import { LinkOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { App, Button, Card, Empty, Progress, Select, Space, Tag, Typography } from 'antd'
+import { App, Button, Card, Empty, Pagination, Progress, Select, Space, Tag, Typography } from 'antd'
 import { useState } from 'react'
 import { api, errorMessage } from '../api/client'
 import { useCompetitors } from '../api/lookups'
 import { formatMoney } from '../api/money'
-import type { MatchQueueItem } from '../api/types'
+import type { MatchQueueItem, MatchQueuePage } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import PageHeader from '../components/PageHeader'
 
@@ -15,16 +15,21 @@ export default function MatchQueue() {
   const queryClient = useQueryClient()
   const competitors = useCompetitors()
   const [competitorId, setCompetitorId] = useState<number>()
+  const [page, setPage] = useState(1)
   const decide = can('matches.decide')
 
   const queue = useQuery({
-    queryKey: ['match-queue', competitorId],
-    queryFn: async () => (await api.get<MatchQueueItem[]>('/matches/queue', { params: { competitor_id: competitorId, limit: 60 } })).data,
+    queryKey: ['match-queue', competitorId, page],
+    queryFn: async () => (await api.get<MatchQueuePage>('/matches/queue', {
+      params: { competitor_id: competitorId, page, limit: 20 },
+    })).data,
+    placeholderData: (prev) => prev,
   })
   const act = useMutation({
     mutationFn: ({ id, verb }: { id: string; verb: 'confirm' | 'reject' }) => api.post(`/matches/${id}/${verb}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['match-queue'] })
+      queryClient.invalidateQueries({ queryKey: ['match-queue-count'] })
       queryClient.invalidateQueries({ queryKey: ['summary'] })
     },
     onError: (e) => message.error(errorMessage(e)),
@@ -32,7 +37,7 @@ export default function MatchQueue() {
 
   // One card per product and shop: its candidates side by side, best first.
   const groups = new Map<string, MatchQueueItem[]>()
-  for (const m of queue.data ?? []) {
+  for (const m of queue.data?.items ?? []) {
     const key = `${m.product_id}:${m.competitor_id}`
     groups.set(key, [...(groups.get(key) ?? []), m])
   }
@@ -40,9 +45,10 @@ export default function MatchQueue() {
   return (
     <>
       <PageHeader title="Match queue"
-        subtitle="Is their item the same product as ours? Confirm once; the system remembers."
+        subtitle={`${queue.data?.total ?? '…'} products waiting. Is their item the same product as ours? Confirm once; the system remembers.`}
         extra={
-          <Select allowClear placeholder="All shops" style={{ width: 200 }} value={competitorId} onChange={setCompetitorId}
+          <Select allowClear placeholder="All shops" style={{ width: 200 }} value={competitorId}
+            onChange={(v) => { setCompetitorId(v); setPage(1) }}
             options={(competitors.data ?? []).filter((c) => c.kind === 'scraped')
               .map((c) => ({ value: c.competitor_id, label: c.name }))} />
         } />
@@ -83,6 +89,10 @@ export default function MatchQueue() {
           )
         })}
       </Space>
+      {(queue.data?.pages ?? 1) > 1 && (
+        <Pagination style={{ marginTop: 16 }} current={page} pageSize={20} total={queue.data?.total}
+          showSizeChanger={false} onChange={setPage} />
+      )}
     </>
   )
 }
