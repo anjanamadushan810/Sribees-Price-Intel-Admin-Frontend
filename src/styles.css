@@ -57,6 +57,28 @@ body {
   margin-left: 8px;
 }
 
+.app-sider {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+.app-sider::-webkit-scrollbar {
+  width: 5px;
+}
+
+.app-sider::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-sider::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+}
+
+.app-sider::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
 .content {
   padding: 24px;
   max-width: 1280px;
@@ -116,6 +138,10 @@ tr.subtotal td { background: #fafafa; }
 tr.total td { background: #f0f5ff; }
 
 @media print {
+  .ant-layout, .ant-layout-content {
+    height: auto !important;
+    overflow: visible !important;
+  }
   .ant-layout-sider, .ant-layout-header, .no-print, .ant-tabs-nav { display: none !important; }
   .content { padding: 0; max-width: none; }
 }
