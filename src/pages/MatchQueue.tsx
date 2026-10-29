@@ -1,6 +1,6 @@
 import { LinkOutlined, WarningOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { App, Button, Card, Empty, Pagination, Popconfirm, Progress, Select, Space, Tag, Typography } from 'antd'
+import { App, Button, Card, Empty, Image, Pagination, Popconfirm, Progress, Select, Space, Tag, Typography } from 'antd'
 import { useState } from 'react'
 import { api, errorMessage } from '../api/client'
 import { useCompetitors } from '../api/lookups'
@@ -15,6 +15,18 @@ function priceFarOff(m: MatchQueueItem): boolean {
   const ratio = toCents(m.item.last_price) / toCents(m.our_price)
   return ratio > 2 || ratio < 0.5
 }
+
+/** A product photo, 72 px; click to see it large. No photo, a quiet placeholder. */
+function Photo({ src }: { src: string | null | undefined }) {
+  if (!src) return <div className="photo photo-none">No photo</div>
+  return (
+    <Image src={src} width={72} height={72} className="photo" referrerPolicy="no-referrer"
+      style={{ objectFit: 'contain' }} fallback={PHOTO_FALLBACK} />
+  )
+}
+
+const PHOTO_FALLBACK =
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72"><rect width="72" height="72" fill="%23f5f5f5"/></svg>'
 
 export default function MatchQueue() {
   const { can } = useAuth()
@@ -69,9 +81,17 @@ export default function MatchQueue() {
             <Card key={`${first.product_id}:${first.competitor_id}`} size="small"
               title={<span>{first.product_name} {first.product_size && <Tag>{first.product_size}</Tag>}</span>}
               extra={<Tag>{first.competitor}</Tag>}>
-              <Space direction="vertical" style={{ width: '100%' }}>
+              <div className="match-row">
+                <div className="ours">
+                  <Photo src={first.product_image} />
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    Ours{first.our_price ? ` · Rs ${formatMoney(first.our_price)}` : ''}
+                  </Typography.Text>
+                </div>
+              <Space direction="vertical" style={{ width: '100%', flex: 1 }}>
                 {candidates.map((m) => (
                   <div key={m.match_id} className="candidate">
+                    <Photo src={m.item.image_url} />
                     <Progress type="circle" size={38} percent={Math.round(Number(m.score) * 100)} />
                     <div style={{ flex: 1 }}>
                       <div>
@@ -105,6 +125,7 @@ export default function MatchQueue() {
                   </div>
                 ))}
               </Space>
+              </div>
             </Card>
           )
         })}

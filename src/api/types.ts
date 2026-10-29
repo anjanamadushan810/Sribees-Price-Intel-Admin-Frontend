@@ -89,6 +89,7 @@ export interface Item {
   size_value: string | null
   size_unit: string | null
   url: string | null
+  image_url: string | null
   last_price: string | null
   last_mrp: string | null
   in_stock: boolean
@@ -147,6 +148,7 @@ export interface MatchQueueItem {
   score: string
   item: Item
   our_price: string | null
+  product_image: string | null
 }
 
 export interface MatchQueuePage {
