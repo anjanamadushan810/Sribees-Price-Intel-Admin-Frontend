@@ -73,21 +73,51 @@ export default function AppLayout() {
       .sort((a, b) => b.length - a.length)[0] ?? '/'
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Layout.Sider breakpoint="lg" collapsedWidth={0} width={232} theme="light"
-        style={{ borderRight: `1px solid ${token.colorBorderSecondary}` }}>
-        <div className="brand">
+    <Layout style={{ height: '100vh', overflow: 'hidden' }}>
+      <Layout.Sider
+        breakpoint="lg"
+        collapsedWidth={0}
+        width={232}
+        theme="light"
+        className="app-sider"
+        style={{
+          height: '100vh',
+          overflowY: 'auto',
+          borderRight: `1px solid ${token.colorBorderSecondary}`,
+        }}
+      >
+        <div
+          className="brand"
+          style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 2,
+            background: '#fff',
+          }}
+        >
           <span className="brand-mark">S</span>
           <span>
             <strong>Sribees</strong> Price Intel
           </span>
         </div>
-        <Menu mode="inline" selectedKeys={[selected]} items={items}
-          onClick={(e) => navigate(e.key)} style={{ borderInlineEnd: 0 }} />
+        <Menu
+          mode="inline"
+          selectedKeys={[selected]}
+          items={items}
+          onClick={(e) => navigate(e.key)}
+          style={{ borderInlineEnd: 0 }}
+        />
       </Layout.Sider>
-      <Layout>
-        <Layout.Header className="topbar" style={{ background: token.colorBgContainer,
-          borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
+      <Layout style={{ height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <Layout.Header
+          className="topbar"
+          style={{
+            background: token.colorBgContainer,
+            borderBottom: `1px solid ${token.colorBorderSecondary}`,
+            flexShrink: 0,
+            zIndex: 1,
+          }}
+        >
           <div />
           <Dropdown
             menu={{
@@ -112,8 +142,10 @@ export default function AppLayout() {
             </Button>
           </Dropdown>
         </Layout.Header>
-        <Layout.Content className="content">
-          <Outlet />
+        <Layout.Content style={{ flex: 1, overflowY: 'auto' }}>
+          <div className="content">
+            <Outlet />
+          </div>
         </Layout.Content>
       </Layout>
     </Layout>
