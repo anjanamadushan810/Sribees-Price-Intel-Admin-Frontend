@@ -146,6 +146,7 @@ export interface MatchQueueItem {
   competitor: string
   score: string
   item: Item
+  our_price: string | null
 }
 
 export interface MatchQueuePage {

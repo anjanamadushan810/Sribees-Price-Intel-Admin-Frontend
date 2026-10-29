@@ -1,13 +1,20 @@
-import { LinkOutlined } from '@ant-design/icons'
+import { LinkOutlined, WarningOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { App, Button, Card, Empty, Pagination, Progress, Select, Space, Tag, Typography } from 'antd'
+import { App, Button, Card, Empty, Pagination, Popconfirm, Progress, Select, Space, Tag, Typography } from 'antd'
 import { useState } from 'react'
 import { api, errorMessage } from '../api/client'
 import { useCompetitors } from '../api/lookups'
-import { formatMoney } from '../api/money'
+import { formatMoney, toCents } from '../api/money'
 import type { MatchQueueItem, MatchQueuePage } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import PageHeader from '../components/PageHeader'
+
+/** Owner (2026-10-29): beyond half or double our price, ask once more before matching. */
+function priceFarOff(m: MatchQueueItem): boolean {
+  if (!m.item.last_price || !m.our_price) return false
+  const ratio = toCents(m.item.last_price) / toCents(m.our_price)
+  return ratio > 2 || ratio < 0.5
+}
 
 export default function MatchQueue() {
   const { can } = useAuth()
@@ -79,8 +86,19 @@ export default function MatchQueue() {
                     </div>
                     {decide && (
                       <Space>
-                        <Button type="primary" size="small" loading={act.isPending && act.variables?.id === m.match_id}
-                          onClick={() => act.mutate({ id: m.match_id, verb: 'confirm' })}>Same product</Button>
+                        {priceFarOff(m) ? (
+                          <Popconfirm
+                            title="The price is far from ours"
+                            description={`They sell it at Rs ${formatMoney(m.item.last_price)}, we at Rs ${formatMoney(m.our_price)}. Same pack and size?`}
+                            okText="Yes, same product" cancelText="Back"
+                            onConfirm={() => act.mutate({ id: m.match_id, verb: 'confirm' })}>
+                            <Button type="primary" size="small" icon={<WarningOutlined />}
+                              loading={act.isPending && act.variables?.id === m.match_id}>Same product</Button>
+                          </Popconfirm>
+                        ) : (
+                          <Button type="primary" size="small" loading={act.isPending && act.variables?.id === m.match_id}
+                            onClick={() => act.mutate({ id: m.match_id, verb: 'confirm' })}>Same product</Button>
+                        )}
                         <Button size="small" onClick={() => act.mutate({ id: m.match_id, verb: 'reject' })}>No</Button>
                       </Space>
                     )}
