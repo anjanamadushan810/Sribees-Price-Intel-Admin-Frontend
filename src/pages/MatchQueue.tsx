@@ -45,7 +45,9 @@ export default function MatchQueue() {
   return (
     <>
       <PageHeader title="Match queue"
-        subtitle={`${queue.data?.total ?? '…'} products waiting. Is their item the same product as ours? Confirm once; the system remembers.`}
+        subtitle={queue.data
+          ? `${queue.data.no_price_yet} products have no shop price yet and come first; ${queue.data.total} pairs in all. Sure matches (same name, size and price) are confirmed automatically.`
+          : '…'}
         extra={
           <Select allowClear placeholder="All shops" style={{ width: 200 }} value={competitorId}
             onChange={(v) => { setCompetitorId(v); setPage(1) }}

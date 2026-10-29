@@ -153,6 +153,7 @@ export interface MatchQueuePage {
   total: number
   page: number
   pages: number
+  no_price_yet: number
 }
 
 export type SuggestionStatus = 'pending' | 'accepted' | 'rejected' | 'superseded' | 'failed' | 'applied'
