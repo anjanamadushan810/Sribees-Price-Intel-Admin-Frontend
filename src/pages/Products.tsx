@@ -5,7 +5,7 @@ import {
 } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import { Checkbox, Image, Input, Select, Space, Table, Tag, Typography } from 'antd'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { LEVEL_LABEL, POSITION } from '../api/lookups'
@@ -77,13 +77,24 @@ function ProductThumb({ src, alt }: { src: string | null | undefined; alt?: stri
 export default function Products() {
   const [params, setParams] = useSearchParams()
   const [branchId, setBranchId] = useState<string>()
+  const [searchTerm, setSearchTerm] = useState('')
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
+  const [sort, setSort] = useState<string | undefined>()
   const [open, setOpen] = useState<string | null>(null)
   const position = params.get('position') ?? undefined
   const level = params.get('level') ?? undefined
   const costMissing = params.get('cost_missing') === '1'
+
+  // Live as-you-type search with 250ms debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setQ(searchTerm.trim())
+      setPage(1)
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
 
   const set = (key: string, value: string | undefined) => {
     const next = new URLSearchParams(params)
@@ -94,7 +105,7 @@ export default function Products() {
   }
 
   const list = useQuery({
-    queryKey: ['products', branchId, q, position, level, costMissing, page, pageSize],
+    queryKey: ['products', branchId, q, position, level, costMissing, page, pageSize, sort],
     queryFn: async () => (await api.get<ProductPage>('/products', {
       params: {
         branch_id: branchId,
@@ -102,6 +113,7 @@ export default function Products() {
         position,
         review_level: level,
         cost_missing: costMissing || undefined,
+        sort: sort || undefined,
         page,
         limit: pageSize,
       },
@@ -136,15 +148,18 @@ export default function Products() {
           allowClear
           placeholder="Search by product name, Sinhala or SKU..."
           style={{ width: 280 }}
-          onPressEnter={(e) => {
-            setQ((e.target as HTMLInputElement).value.trim())
-            setPage(1)
-          }}
+          value={searchTerm}
           onChange={(e) => {
-            if (!e.target.value) {
+            const val = e.target.value
+            setSearchTerm(val)
+            if (!val) {
               setQ('')
               setPage(1)
             }
+          }}
+          onPressEnter={() => {
+            setQ(searchTerm.trim())
+            setPage(1)
           }}
         />
 
@@ -194,22 +209,38 @@ export default function Products() {
           </span>
         </Checkbox>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 13, color: '#64748B' }}>Show:</span>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
           <Select
-            value={pageSize}
-            style={{ width: 115 }}
+            allowClear
+            placeholder="Sort by"
+            style={{ width: 175 }}
+            value={sort}
             onChange={(v) => {
-              setPageSize(v)
+              setSort(v)
               setPage(1)
             }}
             options={[
-              { value: 10, label: '10 / page' },
-              { value: 20, label: '20 / page' },
-              { value: 50, label: '50 / page' },
-              { value: 100, label: '100 / page' },
+              { value: 'gap_desc', label: 'Price Gap: High to Low (▼)' },
+              { value: 'gap_asc', label: 'Price Gap: Low to High (▲)' },
             ]}
           />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 13, color: '#64748B' }}>Show:</span>
+            <Select
+              value={pageSize}
+              style={{ width: 115 }}
+              onChange={(v) => {
+                setPageSize(v)
+                setPage(1)
+              }}
+              options={[
+                { value: 10, label: '10 / page' },
+                { value: 20, label: '20 / page' },
+                { value: 50, label: '50 / page' },
+                { value: 100, label: '100 / page' },
+              ]}
+            />
+          </div>
         </div>
       </div>
 
@@ -219,6 +250,23 @@ export default function Products() {
         loading={list.isFetching}
         dataSource={list.data?.items}
         scroll={{ x: 1050 }}
+        onChange={(pagination, _filters, sorter) => {
+          const s = Array.isArray(sorter) ? sorter[0] : sorter
+          let nextSort: string | undefined
+          if (s && (s.columnKey === 'gap' || s.field === 'gap')) {
+            if (s.order === 'ascend') {
+              nextSort = 'gap_asc'
+            } else if (s.order === 'descend') {
+              nextSort = 'gap_desc'
+            }
+          }
+          if (nextSort !== sort) {
+            setSort(nextSort)
+            setPage(1)
+          } else if (pagination.current && pagination.current !== page) {
+            setPage(pagination.current)
+          }
+        }}
         onRow={(r) => ({
           onClick: () => setOpen(r.product_id),
           style: { cursor: 'pointer' },
@@ -304,8 +352,11 @@ export default function Products() {
           },
           {
             title: 'Price Gap',
-            width: 110,
+            key: 'gap',
+            width: 120,
             align: 'right',
+            sorter: true,
+            sortOrder: sort === 'gap_asc' ? 'ascend' : sort === 'gap_desc' ? 'descend' : null,
             render: (_, r) => {
               if (!r.our_price || !r.cheapest_price) return <span style={{ color: '#94a3b8' }}>—</span>
               const gap = toCents(r.our_price) - toCents(r.cheapest_price)
