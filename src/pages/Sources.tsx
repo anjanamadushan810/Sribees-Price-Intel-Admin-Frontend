@@ -1,6 +1,6 @@
 import { InfoCircleOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { App, Button, Drawer, Space, Switch, Table, Tag, Tooltip } from 'antd'
+import { App, Button, Drawer, Popconfirm, Space, Switch, Table, Tag, Tooltip } from 'antd'
 import { useState } from 'react'
 import { api, errorMessage } from '../api/client'
 import { STATUS_COLOR, statusLabel, useCompetitors } from '../api/lookups'
@@ -29,8 +29,23 @@ export default function Sources() {
 
   return (
     <>
-      <PageHeader title="Sources" subtitle="Shops we compare against and how the last reading went"
-        extra={can('scrape.run') && <Button loading={runNow.isPending} onClick={() => runNow.mutate()}>Run now</Button>} />
+      <PageHeader
+        title="Sources"
+        subtitle="Shops we compare against and how the last reading went"
+        extra={
+          can('scrape.run') && (
+            <Popconfirm
+              title="Run scrapers now?"
+              description="This will read fresh prices from all enabled shops and recompute suggestions. It may take a few minutes."
+              okText="Run"
+              cancelText="Cancel"
+              onConfirm={() => runNow.mutate()}
+            >
+              <Button loading={runNow.isPending}>Run now</Button>
+            </Popconfirm>
+          )
+        }
+      />
       <Table<Competitor>
         rowKey="competitor_id"
         loading={competitors.isLoading}

@@ -12,7 +12,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
-import { Avatar, Badge, Button, Dropdown, Layout, Menu, Typography, theme } from 'antd'
+import { Avatar, Badge, Dropdown, Layout, Menu, Typography, theme } from 'antd'
 import type { ItemType } from 'antd/es/menu/interface'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
@@ -47,6 +47,7 @@ export default function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { token } = theme.useToken()
+
   // How many products wait for a yes / no, shown on the menu so the queue is found.
   const waiting = useQuery({
     queryKey: ['match-queue-count'],
@@ -61,12 +62,18 @@ export default function AppLayout() {
         key: n.key,
         icon: n.icon,
         label: n.key === '/matches' && waiting.data
-          ? <span>{n.label} <Badge count={waiting.data} overflowCount={999} size="small" /></span>
+          ? (
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>{n.label}</span>
+              <Badge count={waiting.data} overflowCount={999} size="small" style={{ backgroundColor: '#E11D48' }} />
+            </span>
+          )
           : n.label,
       }))
     if (!visible.length) return []
     return g.group ? [{ type: 'group' as const, key: g.group, label: g.group, children: visible }] : visible
   })
+
   const selected =
     KEYS
       .filter((k) => k === '/' ? location.pathname === '/' : location.pathname.startsWith(k))
@@ -77,13 +84,14 @@ export default function AppLayout() {
       <Layout.Sider
         breakpoint="lg"
         collapsedWidth={0}
-        width={232}
+        width={240}
         theme="light"
         className="app-sider"
         style={{
           height: '100vh',
           overflowY: 'auto',
           borderRight: `1px solid ${token.colorBorderSecondary}`,
+          background: '#ffffff',
         }}
       >
         <div
@@ -92,54 +100,93 @@ export default function AppLayout() {
             position: 'sticky',
             top: 0,
             zIndex: 2,
-            background: '#fff',
+            background: '#ffffff',
+            borderBottom: `1px solid ${token.colorBorderSecondary}`,
           }}
         >
-          <span className="brand-mark">S</span>
-          <span>
-            <strong>Sribees</strong> Price Intel
-          </span>
+          <div className="brand-mark">S</div>
+          <div className="brand-text">
+            <span className="brand-title">SRIBEES</span>
+            <span className="brand-badge">Price Intel</span>
+          </div>
         </div>
-        <Menu
-          mode="inline"
-          selectedKeys={[selected]}
-          items={items}
-          onClick={(e) => navigate(e.key)}
-          style={{ borderInlineEnd: 0 }}
-        />
+        <div style={{ padding: '12px 8px' }}>
+          <Menu
+            mode="inline"
+            selectedKeys={[selected]}
+            items={items}
+            onClick={(e) => navigate(e.key)}
+            style={{ borderInlineEnd: 0, background: 'transparent' }}
+          />
+        </div>
       </Layout.Sider>
       <Layout style={{ height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <Layout.Header
           className="topbar"
           style={{
-            background: token.colorBgContainer,
             borderBottom: `1px solid ${token.colorBorderSecondary}`,
             flexShrink: 0,
             zIndex: 1,
+            height: 60,
           }}
         >
-          <div />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+              Welcome back, <strong style={{ color: token.colorTextBase }}>{me?.full_name.split(' ')[0]}</strong>
+            </Typography.Text>
+          </div>
           <Dropdown
+            trigger={['click']}
             menu={{
               items: [
-                { key: 'sessions', icon: <UserOutlined />, label: 'My sessions',
-                  onClick: () => navigate('/sessions') },
+                {
+                  key: 'profile-header',
+                  disabled: true,
+                  label: (
+                    <div style={{ padding: '4px 0' }}>
+                      <div style={{ fontWeight: 600, color: '#0F172A' }}>{me?.full_name}</div>
+                      <div style={{ fontSize: 12, color: '#64748B' }}>{me?.email}</div>
+                    </div>
+                  ),
+                },
                 { type: 'divider' },
-                { key: 'logout', icon: <LogoutOutlined />, label: 'Sign out', onClick: () => logout() },
+                {
+                  key: 'sessions',
+                  icon: <UserOutlined />,
+                  label: 'My sessions',
+                  onClick: () => navigate('/sessions'),
+                },
+                { type: 'divider' },
+                {
+                  key: 'logout',
+                  icon: <LogoutOutlined style={{ color: '#EF4444' }} />,
+                  danger: true,
+                  label: 'Sign out',
+                  onClick: () => logout(),
+                },
               ],
             }}
           >
-            <Button type="text" style={{ height: 48 }}>
-              <Avatar size="small" style={{ background: token.colorPrimary }}>
+            <button className="user-profile-btn" style={{ cursor: 'pointer' }}>
+              <Avatar
+                size={26}
+                style={{
+                  background: 'linear-gradient(135deg, #E11D48 0%, #BE123C 100%)',
+                  fontWeight: 600,
+                  fontSize: 13,
+                }}
+              >
                 {me?.full_name.slice(0, 1).toUpperCase()}
               </Avatar>
               <span className="user-label">
-                <Typography.Text strong>{me?.full_name}</Typography.Text>
-                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                <Typography.Text strong style={{ fontSize: 13 }}>
+                  {me?.full_name}
+                </Typography.Text>
+                <Typography.Text type="secondary" style={{ fontSize: 11 }}>
                   {me ? ROLE_LABEL[me.role] : ''}
                 </Typography.Text>
               </span>
-            </Button>
+            </button>
           </Dropdown>
         </Layout.Header>
         <Layout.Content style={{ flex: 1, overflowY: 'auto' }}>

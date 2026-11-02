@@ -1,6 +1,9 @@
 body {
   margin: 0;
-  background: #f5f7f6;
+  background: #f8fafc;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .center {
@@ -15,38 +18,84 @@ body {
   place-items: center;
   padding: 16px;
   box-sizing: border-box;
-  background: linear-gradient(160deg, #e8f2ef 0%, #f5f7f6 60%);
+  background: radial-gradient(circle at 10% 20%, #ffe4e6 0%, #f8fafc 90%);
 }
 
 .login-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px -5px rgba(225, 29, 72, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 18px 20px;
+  gap: 12px;
+  padding: 20px 20px 18px 20px;
   font-size: 16px;
 }
 
 .brand-mark {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: #b4530f;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
   color: #fff;
   display: grid;
   place-items: center;
+  font-weight: 800;
+  font-size: 17px;
+  font-family: 'Outfit', sans-serif;
+  box-shadow: 0 4px 10px rgba(225, 29, 72, 0.25);
+  letter-spacing: -0.5px;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 16px;
   font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.brand-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #e11d48;
 }
 
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 24px;
+  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.85) !important;
+}
+
+.user-profile-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  transition: all 0.2s ease;
+  height: 40px !important;
+}
+
+.user-profile-btn:hover {
+  background: #fff1f2 !important;
+  border-color: #fecdd3 !important;
 }
 
 .user-label {
@@ -54,12 +103,12 @@ body {
   flex-direction: column;
   align-items: flex-start;
   line-height: 1.2;
-  margin-left: 8px;
+  text-align: left;
 }
 
 .app-sider {
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
 }
 
 .app-sider::-webkit-scrollbar {
@@ -71,17 +120,17 @@ body {
 }
 
 .app-sider::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.12);
   border-radius: 4px;
 }
 
 .app-sider::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.22);
 }
 
 .content {
-  padding: 24px;
-  max-width: 1280px;
+  padding: 24px 32px;
+  max-width: 1360px;
   width: 100%;
   margin: 0 auto;
   box-sizing: border-box;
@@ -93,11 +142,17 @@ body {
   align-items: flex-start;
   gap: 16px;
   flex-wrap: wrap;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+}
+
+.page-header h1 {
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: -0.3px;
 }
 
 .num {
   font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
 }
 
 input.num {
@@ -111,20 +166,41 @@ input.num {
 }
 
 .muted {
-  color: rgba(0, 0, 0, 0.45);
+  color: #64748b;
   margin-left: 6px;
 }
 
 .json {
-  background: #fafafa;
-  padding: 8px 12px;
-  border-radius: 6px;
+  background: #f8fafc;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
   max-width: 480px;
   overflow: auto;
   font-size: 12px;
 }
 
-@media (max-width: 600px) {
+/* Modern Ant Design Table Enhancements */
+.ant-table-wrapper {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.ant-table-thead > tr > th {
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.ant-card {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02) !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+@media (max-width: 768px) {
   .content {
     padding: 16px;
   }
@@ -133,9 +209,9 @@ input.num {
   }
 }
 
-/* Report rows: subtotals and totals stand out; printing drops the app frame. */
-tr.subtotal td { background: #fafafa; }
-tr.total td { background: #f0f5ff; }
+/* Report rows */
+tr.subtotal td { background: #f8fafc; }
+tr.total td { background: #fff1f2; font-weight: 600; }
 
 @media print {
   .ant-layout, .ant-layout-content {
@@ -166,13 +242,18 @@ tr.total td { background: #f0f5ff; }
   align-items: center;
   gap: 4px;
   padding-right: 16px;
-  border-right: 1px solid #f0f0f0;
+  border-right: 1px solid #e2e8f0;
 }
 
 .photo {
-  border: 1px solid #f0f0f0;
-  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
   background: #fff;
+  transition: transform 0.2s ease;
+}
+
+.photo:hover {
+  transform: scale(1.05);
 }
 
 .photo-none {
@@ -181,5 +262,7 @@ tr.total td { background: #f0f5ff; }
   display: grid;
   place-items: center;
   font-size: 11px;
-  color: #bfbfbf;
+  color: #94a3b8;
+  border-radius: 10px;
+  background: #f1f5f9;
 }

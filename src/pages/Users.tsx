@@ -55,14 +55,16 @@ function UserModal({ user, onClose }: { user: User | null; onClose: () => void }
   const branches = useBranches()
   const [form] = Form.useForm()
   const role = Form.useWatch('role', form) as string | undefined
+  const allBranches = Form.useWatch('all_branches', form) as boolean | undefined
 
   const save = useMutation({
     mutationFn: async (v: Record<string, unknown>) => {
+      const isAll = !!v.all_branches
       const body: Record<string, unknown> = {
         full_name: v.full_name,
         role: v.role,
-        branch_ids: v.branch_ids ?? [],
-        all_branches: !!v.all_branches,
+        branch_ids: isAll ? [] : ((v.branch_ids as string[]) ?? []),
+        all_branches: isAll,
       }
       if (v.password) body.password = v.password
       if (user) {
@@ -83,7 +85,7 @@ function UserModal({ user, onClose }: { user: User | null; onClose: () => void }
     <Modal open title={user ? user.full_name : 'New user'} onCancel={onClose} okText="Save"
       okButtonProps={{ loading: save.isPending }} onOk={() => form.submit()} width={560}>
       <Form form={form} layout="vertical" requiredMark={false} onFinish={save.mutate}
-        initialValues={user ? { ...user, branch_ids: user.branches.map((b) => b.branch_id) } : { role: 'branch_manager', branch_ids: [] }}>
+        initialValues={user ? { ...user, branch_ids: user.all_branches ? [] : user.branches.map((b) => b.branch_id), all_branches: user.all_branches } : { role: 'branch_manager', branch_ids: [], all_branches: false }}>
         {!user && (
           <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email' }]}>
             <Input autoComplete="off" />
@@ -97,12 +99,38 @@ function UserModal({ user, onClose }: { user: User | null; onClose: () => void }
         </Form.Item>
         {role && !ALL_BRANCH_ROLES.includes(role) && (
           <>
-            <Form.Item name="branch_ids" label="Branches">
-              <Select mode="multiple" placeholder="Branches this person works for"
-                options={(branches.data ?? []).map((b) => ({ value: b.branch_id, label: b.name }))} />
+            <Form.Item
+              name="branch_ids"
+              label="Branches"
+              rules={[
+                {
+                  validator: async (_, value) => {
+                    if (role === 'branch_manager' && !allBranches && (!value || value.length === 0)) {
+                      return Promise.reject(new Error('Select at least one branch for a Branch Manager, or choose "All branches"'))
+                    }
+                    return Promise.resolve()
+                  },
+                },
+              ]}
+            >
+              <Select
+                mode="multiple"
+                disabled={!!allBranches}
+                placeholder={allBranches ? 'User has access to all branches' : 'Branches this person works for'}
+                options={(branches.data ?? []).map((b) => ({ value: b.branch_id, label: b.name }))}
+              />
             </Form.Item>
             <Form.Item name="all_branches" valuePropName="checked">
-              <Checkbox>All branches</Checkbox>
+              <Checkbox
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    form.setFieldValue('branch_ids', [])
+                  }
+                  setTimeout(() => form.validateFields(['branch_ids']), 0)
+                }}
+              >
+                All branches
+              </Checkbox>
             </Form.Item>
           </>
         )}
