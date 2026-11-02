@@ -5,7 +5,7 @@ import {
 } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
 import { Checkbox, Image, Input, Select, Space, Table, Tag, Typography } from 'antd'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { LEVEL_LABEL, POSITION } from '../api/lookups'
@@ -77,6 +77,7 @@ function ProductThumb({ src, alt }: { src: string | null | undefined; alt?: stri
 export default function Products() {
   const [params, setParams] = useSearchParams()
   const [branchId, setBranchId] = useState<string>()
+  const [searchTerm, setSearchTerm] = useState('')
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
@@ -85,6 +86,15 @@ export default function Products() {
   const position = params.get('position') ?? undefined
   const level = params.get('level') ?? undefined
   const costMissing = params.get('cost_missing') === '1'
+
+  // Live as-you-type search with 250ms debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setQ(searchTerm.trim())
+      setPage(1)
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
 
   const set = (key: string, value: string | undefined) => {
     const next = new URLSearchParams(params)
@@ -138,15 +148,18 @@ export default function Products() {
           allowClear
           placeholder="Search by product name, Sinhala or SKU..."
           style={{ width: 280 }}
-          onPressEnter={(e) => {
-            setQ((e.target as HTMLInputElement).value.trim())
-            setPage(1)
-          }}
+          value={searchTerm}
           onChange={(e) => {
-            if (!e.target.value) {
+            const val = e.target.value
+            setSearchTerm(val)
+            if (!val) {
               setQ('')
               setPage(1)
             }
+          }}
+          onPressEnter={() => {
+            setQ(searchTerm.trim())
+            setPage(1)
           }}
         />
 
