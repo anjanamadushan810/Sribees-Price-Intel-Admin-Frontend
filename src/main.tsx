@@ -22,9 +22,45 @@ createRoot(document.getElementById('root')!).render(
       locale={enGB}
       theme={{
         token: {
-          colorPrimary: '#b4530f',
-          borderRadius: 8,
-          fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+          colorPrimary: '#E11D48',
+          colorInfo: '#2563EB',
+          colorSuccess: '#059669',
+          colorWarning: '#D97706',
+          colorError: '#DC2626',
+          colorTextBase: '#0F172A',
+          colorBgBase: '#FFFFFF',
+          colorBgLayout: '#F8FAFC',
+          colorBorderSecondary: '#E2E8F0',
+          borderRadius: 10,
+          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          fontSize: 14,
+        },
+        components: {
+          Button: {
+            borderRadius: 8,
+            controlHeight: 36,
+            fontWeight: 500,
+          },
+          Card: {
+            borderRadiusLG: 14,
+            headerFontSize: 15,
+          },
+          Table: {
+            borderRadius: 12,
+            headerBg: '#F8FAFC',
+            headerColor: '#475569',
+            rowHoverBg: '#FFF1F2',
+          },
+          Menu: {
+            itemBorderRadius: 8,
+            itemHoverBg: '#FFF1F2',
+            itemHoverColor: '#E11D48',
+            itemSelectedBg: '#FFE4E6',
+            itemSelectedColor: '#BE123C',
+          },
+          Tag: {
+            borderRadiusSM: 6,
+          },
         },
       }}
     >
