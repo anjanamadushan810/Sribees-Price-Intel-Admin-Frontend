@@ -4,7 +4,7 @@ import {
   SearchOutlined,
 } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
-import { Checkbox, Input, Select, Space, Table, Tag, Typography } from 'antd'
+import { Checkbox, Image, Input, Select, Space, Table, Tag, Typography } from 'antd'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
@@ -20,6 +20,58 @@ const CADENCE_COLORS: Record<string, string> = {
   weekly: 'warning',
   monthly: 'processing',
   long: 'default',
+}
+
+function ProductThumb({ src, alt }: { src: string | null | undefined; alt?: string }) {
+  if (!src) {
+    return (
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          minWidth: 44,
+          borderRadius: 8,
+          background: '#F1F5F9',
+          border: '1px solid #E2E8F0',
+          display: 'grid',
+          placeItems: 'center',
+          color: '#94A3B8',
+          fontSize: 10,
+          userSelect: 'none',
+        }}
+      >
+        No img
+      </div>
+    )
+  }
+  return (
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        width: 44,
+        height: 44,
+        minWidth: 44,
+        borderRadius: 8,
+        background: '#ffffff',
+        border: '1px solid #E2E8F0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        cursor: 'zoom-in',
+      }}
+    >
+      <Image
+        src={src}
+        alt={alt || 'Product'}
+        width={42}
+        height={42}
+        referrerPolicy="no-referrer"
+        style={{ objectFit: 'contain' }}
+        preview={{ mask: null }}
+      />
+    </div>
+  )
 }
 
 export default function Products() {
@@ -147,7 +199,7 @@ export default function Products() {
         size="middle"
         loading={list.isFetching}
         dataSource={list.data?.items}
-        scroll={{ x: 950 }}
+        scroll={{ x: 1050 }}
         onRow={(r) => ({
           onClick: () => setOpen(r.product_id),
           style: { cursor: 'pointer' },
@@ -164,20 +216,23 @@ export default function Products() {
           {
             title: 'Product',
             render: (_, r) => (
-              <div style={{ maxWidth: 280 }}>
-                <div style={{ fontWeight: 600, color: '#0F172A', fontSize: 13.5 }}>
-                  {r.name}
-                </div>
-                {r.name_si && (
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    {r.name_si}
-                  </Typography.Text>
-                )}
-                {r.sku && (
-                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-                    SKU: {r.sku}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <ProductThumb src={r.image_url} alt={r.name} />
+                <div style={{ maxWidth: 260 }}>
+                  <div style={{ fontWeight: 600, color: '#0F172A', fontSize: 13.5 }}>
+                    {r.name}
                   </div>
-                )}
+                  {r.name_si && (
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      {r.name_si}
+                    </Typography.Text>
+                  )}
+                  {r.sku && (
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                      SKU: {r.sku}
+                    </div>
+                  )}
+                </div>
               </div>
             ),
           },
@@ -204,17 +259,20 @@ export default function Products() {
           },
           {
             title: 'Cheapest Market',
-            width: 170,
+            width: 220,
             align: 'right',
             render: (_, r) =>
               r.cheapest_price ? (
-                <div>
-                  <div className="num" style={{ fontWeight: 600, color: '#0F172A' }}>
-                    Rs {formatMoney(r.cheapest_price)}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div className="num" style={{ fontWeight: 600, color: '#0F172A' }}>
+                      Rs {formatMoney(r.cheapest_price)}
+                    </div>
+                    <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                      {r.cheapest_competitor}
+                    </Typography.Text>
                   </div>
-                  <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-                    {r.cheapest_competitor}
-                  </Typography.Text>
+                  <ProductThumb src={r.cheapest_image} alt={r.cheapest_competitor || 'Competitor'} />
                 </div>
               ) : (
                 <span style={{ color: '#94a3b8' }}>—</span>

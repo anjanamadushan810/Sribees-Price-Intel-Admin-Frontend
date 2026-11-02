@@ -113,12 +113,14 @@ export interface ProductRow {
   name_si: string | null
   sku: string | null
   category: string | null
+  image_url: string | null
   review_level: 'daily' | 'weekly' | 'monthly' | 'long'
   mrp: string | null
   our_price: string | null
   cost_price: string | null
   cheapest_price: string | null
   cheapest_competitor: string | null
+  cheapest_image: string | null
   position: Position
   prices: CompetitorPrice[]
   pending_suggestion_id: string | null
