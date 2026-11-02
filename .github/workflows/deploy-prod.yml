@@ -1,0 +1,77 @@
+# Sribees Price Intel admin app — PRODUCTION deploy to the Contabo box
+# (https://price.sribees.com). The prod stack's nginx serves web/current.
+#
+# Manual only (workflow_dispatch). CI gate (typecheck, tests, build) -> copy the
+# built app into web/releases/<sha> over SSH -> point web/current at it (one
+# atomic rename) -> keep the three newest releases.
+#
+# Repository secrets: SSH_HOST, SSH_PORT, SSH_USER, SSH_PRIVATE_KEY, SSH_KNOWN_HOSTS
+name: Deploy Production (Contabo)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: CI gate
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    name: Publish the admin app (Production)
+    needs: [verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      WEB: /opt/sribees-price-intel-prod/web
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: web
+          path: dist
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+        run: |
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_deploy
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          {
+            echo "Host target"
+            echo "  HostName $SSH_HOST"
+            echo "  User $SSH_USER"
+            echo "  Port $SSH_PORT"
+            echo "  IdentityFile ~/.ssh/id_deploy"
+            echo "  IdentitiesOnly yes"
+            echo "  StrictHostKeyChecking yes"
+            echo "  BatchMode yes"
+          } > ~/.ssh/config
+          ssh target "echo connected as \$(id -un)"
+
+      - name: Publish
+        run: |
+          SHA="${GITHUB_SHA::12}"
+          tar -C dist -czf - . | ssh target "set -e
+            mkdir -p '$WEB/releases/$SHA.tmp' && tar -C '$WEB/releases/$SHA.tmp' -xzf -
+            rm -rf '$WEB/releases/$SHA' && mv '$WEB/releases/$SHA.tmp' '$WEB/releases/$SHA'
+            ln -sfn 'releases/$SHA' '$WEB/current.new' && mv -T '$WEB/current.new' '$WEB/current'
+            cd '$WEB/releases' && ls -1t | grep -v -x '$SHA' | grep -v -x empty | tail -n +4 | xargs -r rm -rf
+            echo production admin app at release $SHA"
+
+      - name: Smoke test through the edge
+        run: |
+          code="$(curl -s -o /dev/null -w '%{http_code}' https://price.sribees.com/ || true)"
+          [ "$code" = 200 ] || { echo "::error::https://price.sribees.com answered ${code:-nothing}"; exit 1; }
+          echo "https://price.sribees.com answered 200"
