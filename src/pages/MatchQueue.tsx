@@ -68,13 +68,14 @@ export default function MatchQueue() {
   const competitors = useCompetitors()
   const [competitorId, setCompetitorId] = useState<number>()
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
   const decide = can('matches.decide')
 
   const queue = useQuery({
-    queryKey: ['match-queue', competitorId, page],
+    queryKey: ['match-queue', competitorId, page, pageSize],
     queryFn: async () =>
       (await api.get<MatchQueuePage>('/matches/queue', {
-        params: { competitor_id: competitorId, page, limit: 20 },
+        params: { competitor_id: competitorId, page, limit: pageSize },
       })).data,
     placeholderData: (prev) => prev,
   })
@@ -108,19 +109,38 @@ export default function MatchQueue() {
             : 'Loading candidate queue...'
         }
         extra={
-          <Select
-            allowClear
-            placeholder="Filter by Competitor Shop"
-            style={{ width: 220 }}
-            value={competitorId}
-            onChange={(v) => {
-              setCompetitorId(v)
-              setPage(1)
-            }}
-            options={(competitors.data ?? [])
-              .filter((c) => c.kind === 'scraped')
-              .map((c) => ({ value: c.competitor_id, label: c.name }))}
-          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Select
+              allowClear
+              placeholder="Filter by Competitor Shop"
+              style={{ width: 220 }}
+              value={competitorId}
+              onChange={(v) => {
+                setCompetitorId(v)
+                setPage(1)
+              }}
+              options={(competitors.data ?? [])
+                .filter((c) => c.kind === 'scraped')
+                .map((c) => ({ value: c.competitor_id, label: c.name }))}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 13, color: '#64748B' }}>Show:</span>
+              <Select
+                value={pageSize}
+                style={{ width: 115 }}
+                onChange={(v) => {
+                  setPageSize(v)
+                  setPage(1)
+                }}
+                options={[
+                  { value: 10, label: '10 / page' },
+                  { value: 20, label: '20 / page' },
+                  { value: 50, label: '50 / page' },
+                  { value: 100, label: '100 / page' },
+                ]}
+              />
+            </div>
+          </div>
         }
       />
 
@@ -307,14 +327,20 @@ export default function MatchQueue() {
         })}
       </Space>
 
-      {(queue.data?.pages ?? 1) > 1 && (
+      {(queue.data?.total ?? 0) > 0 && (
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 24 }}>
           <Pagination
             current={page}
-            pageSize={20}
+            pageSize={pageSize}
             total={queue.data?.total}
-            showSizeChanger={false}
+            showSizeChanger={true}
+            pageSizeOptions={['10', '20', '50', '100']}
+            onShowSizeChange={(_, size) => {
+              setPageSize(size)
+              setPage(1)
+            }}
             onChange={setPage}
+            showTotal={(total, range) => `${range[0]}-${range[1]} of ${total} candidates`}
           />
         </div>
       )}

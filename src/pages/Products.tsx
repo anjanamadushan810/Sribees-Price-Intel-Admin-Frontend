@@ -79,6 +79,7 @@ export default function Products() {
   const [branchId, setBranchId] = useState<string>()
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
   const [open, setOpen] = useState<string | null>(null)
   const position = params.get('position') ?? undefined
   const level = params.get('level') ?? undefined
@@ -93,7 +94,7 @@ export default function Products() {
   }
 
   const list = useQuery({
-    queryKey: ['products', branchId, q, position, level, costMissing, page],
+    queryKey: ['products', branchId, q, position, level, costMissing, page, pageSize],
     queryFn: async () => (await api.get<ProductPage>('/products', {
       params: {
         branch_id: branchId,
@@ -102,7 +103,7 @@ export default function Products() {
         review_level: level,
         cost_missing: costMissing || undefined,
         page,
-        limit: 50,
+        limit: pageSize,
       },
     })).data,
     enabled: !!branchId,
@@ -192,6 +193,24 @@ export default function Products() {
             <DollarOutlined style={{ marginRight: 4 }} /> Cost missing
           </span>
         </Checkbox>
+
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 13, color: '#64748B' }}>Show:</span>
+          <Select
+            value={pageSize}
+            style={{ width: 115 }}
+            onChange={(v) => {
+              setPageSize(v)
+              setPage(1)
+            }}
+            options={[
+              { value: 10, label: '10 / page' },
+              { value: 20, label: '20 / page' },
+              { value: 50, label: '50 / page' },
+              { value: 100, label: '100 / page' },
+            ]}
+          />
+        </div>
       </div>
 
       <Table<ProductRow>
@@ -206,9 +225,14 @@ export default function Products() {
         })}
         pagination={{
           current: page,
-          pageSize: 50,
+          pageSize,
           total: list.data?.total,
-          showSizeChanger: false,
+          showSizeChanger: true,
+          pageSizeOptions: ['10', '20', '50', '100'],
+          onShowSizeChange: (_, size) => {
+            setPageSize(size)
+            setPage(1)
+          },
           onChange: setPage,
           showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} products`,
         }}

@@ -12,6 +12,7 @@ import {
   Empty,
   Popconfirm,
   Segmented,
+  Select,
   Space,
   Table,
   Tag,
@@ -36,6 +37,7 @@ export default function Suggestions() {
   const queryClient = useQueryClient()
   const [branchId, setBranchId] = useState<string>()
   const [status, setStatus] = useState<SuggestionStatus>('pending')
+  const [pageSize, setPageSize] = useState(20)
   const decide = can('suggestions.decide')
 
   const list = useQuery({
@@ -83,11 +85,27 @@ export default function Suggestions() {
             ),
           }))}
         />
-        {list.data && list.data.length > 0 && (
-          <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-            Showing <strong>{list.data.length}</strong> {status} suggestions
-          </Typography.Text>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {list.data && list.data.length > 0 && (
+            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+              Total: <strong>{list.data.length}</strong> {status} suggestions
+            </Typography.Text>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 13, color: '#64748B' }}>Show:</span>
+            <Select
+              value={pageSize}
+              style={{ width: 115 }}
+              onChange={(v) => setPageSize(v)}
+              options={[
+                { value: 10, label: '10 / page' },
+                { value: 20, label: '20 / page' },
+                { value: 50, label: '50 / page' },
+                { value: 100, label: '100 / page' },
+              ]}
+            />
+          </div>
+        </div>
       </div>
 
       <Table<Suggestion>
@@ -95,7 +113,13 @@ export default function Suggestions() {
         size="middle"
         loading={list.isLoading}
         dataSource={list.data}
-        pagination={{ pageSize: 50, hideOnSinglePage: true }}
+        pagination={{
+          pageSize,
+          showSizeChanger: true,
+          pageSizeOptions: ['10', '20', '50', '100'],
+          onShowSizeChange: (_, size) => setPageSize(size),
+          showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} suggestions`,
+        }}
         scroll={{ x: 920 }}
         locale={{
           emptyText: (
