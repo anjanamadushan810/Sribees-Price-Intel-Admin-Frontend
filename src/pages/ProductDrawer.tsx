@@ -62,12 +62,28 @@ export default function ProductDrawer({
   }
 
   const saveCost = useMutation({
-    mutationFn: () =>
-      api.put(`/branches/${branchId}/products/${productId}/cost`, {
-        cost_price: cost.trim().replace(/,/g, ''),
-      }),
+    mutationFn: () => {
+      const clean = cost.trim().replace(/,/g, '')
+      return api.put(`/branches/${branchId}/products/${productId}/cost`, {
+        cost_price: clean,
+      })
+    },
     onSuccess: () => {
-      message.success('Cost price saved successfully. Repricing suggestions will update on next run.')
+      const isZero = Number(cost.trim().replace(/,/g, '')) === 0
+      message.success(
+        isZero
+          ? 'Cost price cleared (marked as Missing).'
+          : 'Cost price saved successfully. Repricing suggestions will update on next run.'
+      )
+      setCost('')
+      refresh()
+    },
+  })
+
+  const clearCost = useMutation({
+    mutationFn: () => api.delete(`/branches/${branchId}/products/${productId}/cost`),
+    onSuccess: () => {
+      message.success('Cost price cleared (marked as Missing).')
       setCost('')
       refresh()
     },
@@ -147,27 +163,50 @@ export default function ProductDrawer({
               style={{ borderRadius: 12, background: '#FFF1F2', borderColor: '#FECDD3' }}
             >
               <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 10 }}>
-                Cost price is required to calculate the protected 5% minimum profit floor.
+                Cost price is required to calculate the protected 5% minimum profit floor. (Enter 0 or use Clear to reset to Missing)
               </Typography.Text>
-              <Space.Compact style={{ width: '100%' }}>
-                <Input
-                  addonBefore="Rs"
-                  placeholder={p.cost_price ? `Current: ${formatMoney(p.cost_price)}` : 'Enter purchase cost'}
-                  value={cost}
-                  onChange={(e) => setCost(e.target.value)}
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <Space.Compact style={{ flex: 1 }}>
+                  <Input
+                    addonBefore="Rs"
+                    placeholder={p.cost_price ? `Current: ${formatMoney(p.cost_price)}` : 'Enter purchase cost (0 to clear)'}
+                    value={cost}
+                    onChange={(e) => setCost(e.target.value)}
+                    onPressEnter={() => {
+                      if (isValidAmount(cost)) saveCost.mutate()
+                    }}
+                  />
+                  <Button
+                    type="primary"
+                    disabled={!isValidAmount(cost)}
+                    loading={saveCost.isPending}
+                    onClick={() => saveCost.mutate()}
+                    style={{ background: '#E11D48', borderColor: '#E11D48' }}
+                  >
+                    Save Cost
+                  </Button>
+                </Space.Compact>
+                {p.cost_price && (
+                  <Popconfirm
+                    title="Clear cost price?"
+                    description="This resets the cost to 'Missing' and protects profit by withholding repricing suggestions until a valid cost is re-entered."
+                    onConfirm={() => clearCost.mutate()}
+                    okText="Clear"
+                    cancelText="Cancel"
+                  >
+                    <Button danger loading={clearCost.isPending}>
+                      Clear
+                    </Button>
+                  </Popconfirm>
+                )}
+              </div>
+              {(saveCost.error || clearCost.error) && (
+                <Alert
+                  style={{ marginTop: 8 }}
+                  type="error"
+                  showIcon
+                  message={errorMessage(saveCost.error || clearCost.error)}
                 />
-                <Button
-                  type="primary"
-                  disabled={!isValidAmount(cost)}
-                  loading={saveCost.isPending}
-                  onClick={() => saveCost.mutate()}
-                  style={{ background: '#E11D48', borderColor: '#E11D48' }}
-                >
-                  Save Cost
-                </Button>
-              </Space.Compact>
-              {saveCost.error && (
-                <Alert style={{ marginTop: 8 }} type="error" showIcon message={errorMessage(saveCost.error)} />
               )}
             </Card>
           )}
