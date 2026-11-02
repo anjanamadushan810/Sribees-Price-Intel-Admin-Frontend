@@ -75,3 +75,4 @@ jobs:
           code="$(curl -s -o /dev/null -w '%{http_code}' https://price.sribees.com/ || true)"
           [ "$code" = 200 ] || { echo "::error::https://price.sribees.com answered ${code:-nothing}"; exit 1; }
           echo "https://price.sribees.com answered 200"
+
