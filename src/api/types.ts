@@ -152,6 +152,8 @@ export interface MatchQueueItem {
   item: Item
   our_price: string | null
   product_image: string | null
+  method: 'barcode' | 'name' | 'manual'
+  flags: string[]
 }
 
 export interface MatchHealthItem {

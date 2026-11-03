@@ -1,7 +1,9 @@
 import {
   CheckOutlined,
   CloseOutlined,
+  InfoCircleOutlined,
   LinkOutlined,
+  PlusOutlined,
   ShopOutlined,
   WarningOutlined,
 } from '@ant-design/icons'
@@ -11,7 +13,10 @@ import {
   Button,
   Card,
   Empty,
+  Form,
   Image,
+  Input,
+  Modal,
   Pagination,
   Popconfirm,
   Progress,
@@ -25,7 +30,7 @@ import { useState } from 'react'
 import { api, errorMessage } from '../api/client'
 import { useCompetitors } from '../api/lookups'
 import { formatMoney, toCents } from '../api/money'
-import type { MatchQueueItem, MatchQueuePage } from '../api/types'
+import type { MatchQueueItem, MatchQueuePage, ProductPage } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import PageHeader from '../components/PageHeader'
 
@@ -60,6 +65,107 @@ function Photo({ src, alt }: { src: string | null | undefined; alt?: string }) {
 
 const PHOTO_FALLBACK =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="76" height="76"><rect width="76" height="76" fill="%23f1f5f9"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-size="10">No image</text></svg>'
+
+/** A shop's product page the matcher missed: pasted here, it comes back as a card in the queue. */
+function AddManualMatch({ onAdded }: { onAdded: () => void }) {
+  const { message } = App.useApp()
+  const queryClient = useQueryClient()
+  const competitors = useCompetitors()
+  const [form] = Form.useForm()
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+
+  const products = useQuery({
+    queryKey: ['product-search', search],
+    queryFn: async () =>
+      (await api.get<ProductPage>('/products', { params: { q: search || undefined, limit: 30 } })).data,
+    enabled: open && search.length >= 2,
+  })
+
+  const add = useMutation({
+    mutationFn: (v: { product_id: string; competitor_id: number; url: string }) =>
+      api.post('/matches/manual', { ...v, url: v.url.trim() }),
+    onSuccess: () => {
+      message.success('Added to the queue. Check it and confirm.')
+      setOpen(false)
+      form.resetFields()
+      onAdded()
+      queryClient.invalidateQueries({ queryKey: ['match-queue'] })
+      queryClient.invalidateQueries({ queryKey: ['match-queue-count'] })
+    },
+    onError: (e) => message.error(errorMessage(e)),
+  })
+
+  return (
+    <>
+      <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
+        Add manual match
+      </Button>
+      <Modal
+        open={open}
+        title="Add manual match"
+        okText={add.isPending ? 'Reading the shop page…' : 'Add to queue'}
+        okButtonProps={{ loading: add.isPending }}
+        cancelButtonProps={{ disabled: add.isPending }}
+        onOk={() => form.submit()}
+        onCancel={() => setOpen(false)}
+        destroyOnHidden
+      >
+        <Form form={form} layout="vertical" requiredMark={false} onFinish={add.mutate}>
+          <Form.Item
+            name="product_id"
+            label="Our product"
+            rules={[{ required: true, message: 'Search and pick our product' }]}
+          >
+            <Select
+              showSearch
+              filterOption={false}
+              onSearch={setSearch}
+              placeholder="Type 2+ letters (name or SKU)"
+              loading={products.isFetching}
+              notFoundContent={search.length < 2 ? null : undefined}
+              options={(products.data?.items ?? []).map((p) => ({
+                value: p.product_id,
+                label: (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {p.image_url && (
+                      <img src={p.image_url} alt="" width={24} height={24} referrerPolicy="no-referrer"
+                        style={{ objectFit: 'contain' }} />
+                    )}
+                    {p.name}
+                  </span>
+                ),
+              }))}
+            />
+          </Form.Item>
+          <Form.Item
+            name="competitor_id"
+            label="Competitor shop"
+            rules={[{ required: true, message: 'Pick the shop' }]}
+          >
+            <Select
+              placeholder="Pick the shop"
+              options={(competitors.data ?? [])
+                .filter((c) => c.kind === 'scraped')
+                .map((c) => ({ value: c.competitor_id, label: c.name }))}
+            />
+          </Form.Item>
+          <Form.Item
+            name="url"
+            label="Their product page"
+            extra="Copy the address from the shop's product page. Only that one page is read."
+            rules={[
+              { required: true, message: "Paste the shop's product page address" },
+              { type: 'url', message: 'That is not a web address' },
+            ]}
+          >
+            <Input placeholder="https://…" allowClear />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </>
+  )
+}
 
 export default function MatchQueue() {
   const { can } = useAuth()
@@ -123,6 +229,14 @@ export default function MatchQueue() {
                 .filter((c) => c.kind === 'scraped')
                 .map((c) => ({ value: c.competitor_id, label: c.name }))}
             />
+            {decide && (
+              <AddManualMatch
+                onAdded={() => {
+                  setCompetitorId(undefined)
+                  setPage(1)
+                }}
+              />
+            )}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 13, color: '#64748B' }}>Show:</span>
               <Select
@@ -235,22 +349,33 @@ export default function MatchQueue() {
                       >
                         <Photo src={m.item.image_url} alt={m.item.name} />
 
-                        <Tooltip title={`Fuzzy match confidence: ${scorePct}%`}>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <Progress
-                              type="circle"
-                              size={42}
-                              percent={scorePct}
-                              strokeColor={scorePct > 80 ? '#059669' : scorePct > 60 ? '#D97706' : '#2563EB'}
-                              format={(p) => <span style={{ fontSize: 10, fontWeight: 700 }}>{p}%</span>}
-                            />
-                            <span style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>Match</span>
-                          </div>
-                        </Tooltip>
+                        {m.method === 'manual' ? (
+                          <Tooltip title="Added by hand from the shop's page">
+                            <Tag color="purple" style={{ margin: 0 }}>Manual</Tag>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip title={`Fuzzy match confidence: ${scorePct}%`}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                              <Progress
+                                type="circle"
+                                size={42}
+                                percent={scorePct}
+                                strokeColor={scorePct > 80 ? '#059669' : scorePct > 60 ? '#D97706' : '#2563EB'}
+                                format={(p) => <span style={{ fontSize: 10, fontWeight: 700 }}>{p}%</span>}
+                              />
+                              <span style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>Match</span>
+                            </div>
+                          </Tooltip>
+                        )}
 
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 600, fontSize: 14, color: '#0F172A' }}>
                             {m.item.name}{' '}
+                            {m.flags.length > 0 && (
+                              <Tooltip title={`Check before confirming: ${m.flags.join(', ')}`} trigger={['hover', 'click']}>
+                                <InfoCircleOutlined style={{ color: '#94a3b8', fontSize: 13, marginLeft: 2, cursor: 'pointer' }} />
+                              </Tooltip>
+                            )}
                             {m.item.url && (
                               <a href={m.item.url} target="_blank" rel="noreferrer noopener" style={{ marginLeft: 4 }}>
                                 <LinkOutlined style={{ color: '#2563EB', fontSize: 13 }} />
