@@ -7,6 +7,7 @@ import AppLayout from './components/AppLayout'
 
 const AuditLog = lazy(() => import('./pages/AuditLog'))
 const ManualPrices = lazy(() => import('./pages/ManualPrices'))
+const MatchHealth = lazy(() => import('./pages/MatchHealth'))
 const MatchQueue = lazy(() => import('./pages/MatchQueue'))
 const Overview = lazy(() => import('./pages/Overview'))
 const Products = lazy(() => import('./pages/Products'))
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="products" element={guarded('prices.read', <Products />)} />
           <Route path="suggestions" element={guarded('suggestions.read', <Suggestions />)} />
           <Route path="matches" element={guarded('matches.read', <MatchQueue />)} />
+          <Route path="match-health" element={guarded('matches.read', <MatchHealth />)} />
           <Route path="manual" element={guarded('observations.manual', <ManualPrices />)} />
           <Route path="sources" element={guarded('competitors.read', <Sources />)} />
           <Route path="settings" element={guarded('settings.read', <Settings />)} />

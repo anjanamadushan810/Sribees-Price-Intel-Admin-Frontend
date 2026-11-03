@@ -4,6 +4,7 @@ import {
   CloudDownloadOutlined,
   DashboardOutlined,
   EditOutlined,
+  HeartOutlined,
   LinkOutlined,
   LogoutOutlined,
   SettingOutlined,
@@ -31,6 +32,7 @@ const NAV: { group?: string; items: NavItem[] }[] = [
   ] },
   { group: 'Keep data right', items: [
     { key: '/matches', label: 'Match queue', icon: <LinkOutlined />, permission: 'matches.read' },
+    { key: '/match-health', label: 'Match health', icon: <HeartOutlined />, permission: 'matches.read' },
     { key: '/manual', label: 'Shelf prices', icon: <EditOutlined />, permission: 'observations.manual' },
   ] },
   { group: 'Setup', items: [
@@ -55,17 +57,31 @@ export default function AppLayout() {
     enabled: can('matches.read'),
     refetchInterval: 60_000,
   })
+  // Matched items a shop changed or dropped: their prices are out until someone looks.
+  const unhealthy = useQuery({
+    queryKey: ['match-health-count'],
+    queryFn: async () => {
+      const c = (await api.get<{ changed: number; gone: number }>('/matches/health/count')).data
+      return c.changed + c.gone
+    },
+    enabled: can('matches.read'),
+    refetchInterval: 60_000,
+  })
+  const badges: Record<string, number | undefined> = {
+    '/matches': waiting.data,
+    '/match-health': unhealthy.data,
+  }
 
   const items: ItemType[] = NAV.flatMap<ItemType>((g) => {
     const visible = g.items.filter((n) => !n.permission || can(n.permission))
       .map((n) => ({
         key: n.key,
         icon: n.icon,
-        label: n.key === '/matches' && waiting.data
+        label: badges[n.key]
           ? (
             <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span>{n.label}</span>
-              <Badge count={waiting.data} overflowCount={999} size="small" style={{ backgroundColor: '#E11D48' }} />
+              <Badge count={badges[n.key]} overflowCount={999} size="small" style={{ backgroundColor: '#E11D48' }} />
             </span>
           )
           : n.label,

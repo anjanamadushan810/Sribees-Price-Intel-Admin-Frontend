@@ -153,6 +153,31 @@ export interface MatchQueueItem {
   product_image: string | null
 }
 
+export interface MatchHealthItem {
+  match_id: string
+  product_id: string
+  product_name: string
+  product_size: string | null
+  product_image: string | null
+  our_price: string | null
+  competitor_id: number
+  competitor: string
+  status: 'changed' | 'gone'
+  was: string | null
+  method: string
+  note: string | null
+  since: string | null
+  seen_name: string | null
+  item: Item
+}
+
+export interface MatchHealthPage {
+  items: MatchHealthItem[]
+  total: number
+  page: number
+  pages: number
+}
+
 export interface MatchQueuePage {
   items: MatchQueueItem[]
   total: number
