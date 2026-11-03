@@ -69,6 +69,7 @@ export interface Competitor {
   notes: string | null
   last_run_at: string | null
   last_ok_at: string | null
+  running: boolean
 }
 
 export interface Run {
@@ -151,6 +152,8 @@ export interface MatchQueueItem {
   item: Item
   our_price: string | null
   product_image: string | null
+  method: 'barcode' | 'name' | 'manual'
+  flags: string[]
 }
 
 export interface MatchHealthItem {

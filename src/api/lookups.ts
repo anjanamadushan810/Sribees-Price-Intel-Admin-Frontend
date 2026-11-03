@@ -11,11 +11,13 @@ export function useBranches(enabled = true) {
   })
 }
 
-export function useCompetitors() {
+export function useCompetitors(watch = false) {
   return useQuery({
     queryKey: ['competitors'],
     queryFn: async () => (await api.get<Competitor[]>('/competitors')).data,
     staleTime: 60_000,
+    // While a shop is being read, look again every 10 s so its row updates by itself.
+    refetchInterval: watch ? (q) => (q.state.data?.some((c) => c.running) ? 10_000 : false) : false,
   })
 }
 

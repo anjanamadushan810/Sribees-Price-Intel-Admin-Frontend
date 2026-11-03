@@ -13,7 +13,7 @@ export default function Sources() {
   const { can } = useAuth()
   const { message } = App.useApp()
   const queryClient = useQueryClient()
-  const competitors = useCompetitors()
+  const competitors = useCompetitors(true)
   const [runsOf, setRunsOf] = useState<Competitor | null>(null)
 
   const toggle = useMutation({
@@ -24,6 +24,14 @@ export default function Sources() {
   const runNow = useMutation({
     mutationFn: () => api.post('/jobs/daily'),
     onSuccess: () => message.success('Started. Sources read politely, so this takes a few minutes.'),
+    onError: (e) => message.error(errorMessage(e)),
+  })
+  const runOne = useMutation({
+    mutationFn: (c: Competitor) => api.post('/jobs/daily', null, { params: { competitor_id: c.competitor_id } }),
+    onSuccess: (_, c) => {
+      message.success(`${c.name}: started. This takes a few minutes.`)
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: ['competitors'] }), 3000)
+    },
     onError: (e) => message.error(errorMessage(e)),
   })
 
@@ -61,7 +69,9 @@ export default function Sources() {
             ) },
           { title: 'How', dataIndex: 'kind', width: 110, render: (v) => v === 'manual' ? 'By hand' : 'Automatic' },
           { title: 'Status', dataIndex: 'status', width: 110,
-            render: (v, c) => c.kind === 'manual' ? '—' : <Tag color={STATUS_COLOR[v]}>{statusLabel(v)}</Tag> },
+            render: (v, c) => c.kind === 'manual' ? '—'
+              : c.running ? <Tag color={STATUS_COLOR.running}>Running</Tag>
+              : <Tag color={STATUS_COLOR[v]}>{statusLabel(v)}</Tag> },
           { title: 'Last good reading', dataIndex: 'last_ok_at', width: 170,
             render: (v, c) => c.kind === 'manual' ? '—' : <Tooltip title={formatTime(v)}>{ago(v)}</Tooltip> },
           { title: 'On', dataIndex: 'is_enabled', width: 80, render: (v, c) => (
@@ -69,8 +79,24 @@ export default function Sources() {
                 loading={toggle.isPending && toggle.variables?.id === c.competitor_id}
                 onChange={(on) => toggle.mutate({ id: c.competitor_id, on })} />
             ) },
-          { width: 90, render: (_, c) => c.kind === 'scraped' && (
-              <Button size="small" type="link" onClick={() => setRunsOf(c)}>Runs</Button>
+          { width: 150, render: (_, c) => c.kind === 'scraped' && (
+              <Space size={0}>
+                {can('scrape.run') && c.is_enabled && (
+                  <Popconfirm
+                    title={`Read ${c.name} now?`}
+                    description="Only this shop is read. It may take a few minutes."
+                    okText="Run"
+                    cancelText="Cancel"
+                    onConfirm={() => runOne.mutate(c)}
+                  >
+                    <Button size="small" type="link" disabled={c.running}
+                      loading={runOne.isPending && runOne.variables?.competitor_id === c.competitor_id}>
+                      Run
+                    </Button>
+                  </Popconfirm>
+                )}
+                <Button size="small" type="link" onClick={() => setRunsOf(c)}>Runs</Button>
+              </Space>
             ) },
         ]}
       />
