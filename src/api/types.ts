@@ -69,6 +69,7 @@ export interface Competitor {
   notes: string | null
   last_run_at: string | null
   last_ok_at: string | null
+  running: boolean
 }
 
 export interface Run {
