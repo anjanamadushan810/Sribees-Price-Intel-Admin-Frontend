@@ -349,27 +349,30 @@ export default function MatchQueue() {
                       >
                         <Photo src={m.item.image_url} alt={m.item.name} />
 
-                        {m.method === 'manual' ? (
-                          <Tooltip title="Added by hand from the shop's page">
-                            <Tag color="purple" style={{ margin: 0 }}>Manual</Tag>
-                          </Tooltip>
-                        ) : (
-                          <Tooltip title={`Fuzzy match confidence: ${scorePct}%`}>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                              <Progress
-                                type="circle"
-                                size={42}
-                                percent={scorePct}
-                                strokeColor={scorePct > 80 ? '#059669' : scorePct > 60 ? '#D97706' : '#2563EB'}
-                                format={(p) => <span style={{ fontSize: 10, fontWeight: 700 }}>{p}%</span>}
-                              />
-                              <span style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>Match</span>
-                            </div>
-                          </Tooltip>
-                        )}
+                        <Tooltip
+                          title={m.method === 'manual'
+                            ? `Names alike: ${scorePct}%`
+                            : `Fuzzy match confidence: ${scorePct}%`}
+                        >
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <Progress
+                              type="circle"
+                              size={42}
+                              percent={scorePct}
+                              strokeColor={scorePct > 80 ? '#059669' : scorePct > 60 ? '#D97706' : '#2563EB'}
+                              format={(p) => <span style={{ fontSize: 10, fontWeight: 700 }}>{p}%</span>}
+                            />
+                            <span style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>Match</span>
+                          </div>
+                        </Tooltip>
 
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 600, fontSize: 14, color: '#0F172A' }}>
+                            {m.method === 'manual' && (
+                              <Tooltip title="Added by hand from the shop's page">
+                                <Tag color="purple" style={{ marginRight: 6 }}>Manual</Tag>
+                              </Tooltip>
+                            )}
                             {m.item.name}{' '}
                             {m.flags.length > 0 && (
                               <Tooltip title={`Check before confirming: ${m.flags.join(', ')}`} trigger={['hover', 'click']}>
