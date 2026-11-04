@@ -20,6 +20,7 @@ import {
   Pagination,
   Popconfirm,
   Progress,
+  Segmented,
   Select,
   Space,
   Tag,
@@ -30,7 +31,7 @@ import { useState } from 'react'
 import { api, errorMessage } from '../api/client'
 import { useCompetitors } from '../api/lookups'
 import { formatMoney, toCents } from '../api/money'
-import type { MatchQueueItem, MatchQueuePage, ProductPage } from '../api/types'
+import type { Item, MatchQueueItem, MatchQueuePage, ProductPage } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import PageHeader from '../components/PageHeader'
 
@@ -66,7 +67,9 @@ function Photo({ src, alt }: { src: string | null | undefined; alt?: string }) {
 const PHOTO_FALLBACK =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="76" height="76"><rect width="76" height="76" fill="%23f1f5f9"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-size="10">No image</text></svg>'
 
-/** A shop's product page the matcher missed: pasted here, it comes back as a card in the queue. */
+/** A shop item the matcher missed, added by hand: picked from the shop's list (the only way
+ *  for a shop like Nexmart, whose products open in a pop-up with no address of their own) or
+ *  read from a pasted product page. Either way it comes back as a card in the queue. */
 function AddManualMatch({ onAdded }: { onAdded: () => void }) {
   const { message } = App.useApp()
   const queryClient = useQueryClient()
@@ -74,6 +77,9 @@ function AddManualMatch({ onAdded }: { onAdded: () => void }) {
   const [form] = Form.useForm()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [how, setHow] = useState<'list' | 'link'>('list')
+  const [itemSearch, setItemSearch] = useState('')
+  const competitorId: number | undefined = Form.useWatch('competitor_id', form)
 
   const products = useQuery({
     queryKey: ['product-search', search],
@@ -82,13 +88,23 @@ function AddManualMatch({ onAdded }: { onAdded: () => void }) {
     enabled: open && search.length >= 2,
   })
 
+  const items = useQuery({
+    queryKey: ['item-search', competitorId, itemSearch],
+    queryFn: async () =>
+      (await api.get<Item[]>('/items', { params: { q: itemSearch.trim(), competitor_id: competitorId } })).data,
+    enabled: open && how === 'list' && !!competitorId && itemSearch.trim().length >= 2,
+  })
+
   const add = useMutation({
-    mutationFn: (v: { product_id: string; competitor_id: number; url: string }) =>
-      api.post('/matches/manual', { ...v, url: v.url.trim() }),
+    mutationFn: (v: { product_id: string; competitor_id: number; url?: string; item_id?: string }) =>
+      api.post('/matches/manual', how === 'list'
+        ? { product_id: v.product_id, competitor_id: v.competitor_id, item_id: v.item_id }
+        : { product_id: v.product_id, competitor_id: v.competitor_id, url: v.url?.trim() }),
     onSuccess: () => {
       message.success('Added to the queue. Check it and confirm.')
       setOpen(false)
       form.resetFields()
+      setItemSearch('')
       onAdded()
       queryClient.invalidateQueries({ queryKey: ['match-queue'] })
       queryClient.invalidateQueries({ queryKey: ['match-queue-count'] })
@@ -104,7 +120,7 @@ function AddManualMatch({ onAdded }: { onAdded: () => void }) {
       <Modal
         open={open}
         title="Add manual match"
-        okText={add.isPending ? 'Reading the shop page…' : 'Add to queue'}
+        okText={add.isPending ? (how === 'link' ? 'Reading the shop page…' : 'Adding…') : 'Add to queue'}
         okButtonProps={{ loading: add.isPending }}
         cancelButtonProps={{ disabled: add.isPending }}
         onOk={() => form.submit()}
@@ -145,22 +161,75 @@ function AddManualMatch({ onAdded }: { onAdded: () => void }) {
           >
             <Select
               placeholder="Pick the shop"
+              onChange={() => form.setFieldValue('item_id', undefined)}
               options={(competitors.data ?? [])
                 .filter((c) => c.kind === 'scraped')
                 .map((c) => ({ value: c.competitor_id, label: c.name }))}
             />
           </Form.Item>
-          <Form.Item
-            name="url"
-            label="Their product page"
-            extra="Copy the address from the shop's product page. Only that one page is read."
-            rules={[
-              { required: true, message: "Paste the shop's product page address" },
-              { type: 'url', message: 'That is not a web address' },
-            ]}
-          >
-            <Input placeholder="https://…" allowClear />
+          <Form.Item label="Find their item">
+            <Segmented
+              block
+              value={how}
+              onChange={(v) => setHow(v as 'list' | 'link')}
+              options={[
+                { value: 'list', label: "Search the shop's list" },
+                { value: 'link', label: 'Paste a page link' },
+              ]}
+            />
           </Form.Item>
+          {how === 'list' ? (
+            <Form.Item
+              name="item_id"
+              label="Their item"
+              extra="Items our daily run already read from this shop. Use this for shops with no page per product, like Nexmart."
+              rules={[{ required: true, message: "Search and pick the shop's item" }]}
+            >
+              <Select
+                showSearch
+                filterOption={false}
+                disabled={!competitorId}
+                onSearch={setItemSearch}
+                placeholder={competitorId ? 'Words from the name, e.g. maliban chocolate 400g' : 'Pick the shop first'}
+                loading={items.isFetching}
+                notFoundContent={itemSearch.trim().length < 2 ? null : undefined}
+                optionLabelProp="title"
+                options={(items.data ?? []).map((it) => ({
+                  value: it.item_id,
+                  title: it.name,
+                  label: (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {it.image_url ? (
+                        <img src={it.image_url} alt="" width={28} height={28} referrerPolicy="no-referrer"
+                          style={{ objectFit: 'contain', flex: 'none' }} />
+                      ) : (
+                        <span style={{ width: 28, flex: 'none' }} />
+                      )}
+                      <span style={{ flex: 1, minWidth: 0, whiteSpace: 'normal' }}>
+                        {it.name}
+                        {!it.in_stock && <Tag style={{ marginLeft: 6 }}>out of stock</Tag>}
+                      </span>
+                      <Typography.Text strong style={{ flex: 'none' }}>
+                        {it.last_price ? formatMoney(it.last_price) : '—'}
+                      </Typography.Text>
+                    </span>
+                  ),
+                }))}
+              />
+            </Form.Item>
+          ) : (
+            <Form.Item
+              name="url"
+              label="Their product page"
+              extra="Copy the address from the shop's product page. Only that one page is read."
+              rules={[
+                { required: true, message: "Paste the shop's product page address" },
+                { type: 'url', message: 'That is not a web address' },
+              ]}
+            >
+              <Input placeholder="https://…" allowClear />
+            </Form.Item>
+          )}
         </Form>
       </Modal>
     </>
