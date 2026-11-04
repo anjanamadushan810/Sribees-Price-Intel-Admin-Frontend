@@ -95,6 +95,10 @@ export interface Item {
   last_mrp: string | null
   in_stock: boolean
   last_seen_at: string
+  /** Sold loose: last_price is for size_value (none = 1 kg / 1 l) */
+  loose: boolean
+  /** Set when a person chose that amount; the daily run then keeps it */
+  price_for_by: string | null
 }
 
 export interface CompetitorPrice {
@@ -104,6 +108,8 @@ export interface CompetitorPrice {
   status: 'auto' | 'confirmed'
   item: Item
   fresh: boolean
+  /** Their price at our pack size (a bulk price scaled), null when it cannot be compared */
+  compare_price: string | null
 }
 
 export type Position = 'cheaper' | 'equal' | 'dearer' | 'unknown'
@@ -154,6 +160,8 @@ export interface MatchQueueItem {
   product_image: string | null
   method: 'barcode' | 'name' | 'manual'
   flags: string[]
+  /** Their price at our pack size (a bulk price scaled) */
+  compare_price: string | null
 }
 
 export interface MatchHealthItem {
