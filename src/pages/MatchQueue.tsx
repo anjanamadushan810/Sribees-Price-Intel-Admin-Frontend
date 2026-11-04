@@ -33,12 +33,15 @@ import { useCompetitors } from '../api/lookups'
 import { formatMoney, toCents } from '../api/money'
 import type { Item, MatchQueueItem, MatchQueuePage, ProductPage } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+import BulkPrice from '../components/BulkPrice'
 import PageHeader from '../components/PageHeader'
 
 /** Beyond half or double our price, ask once more before matching */
 function priceFarOff(m: MatchQueueItem): boolean {
-  if (!m.item.last_price || !m.our_price) return false
-  const ratio = toCents(m.item.last_price) / toCents(m.our_price)
+  // A bulk price is judged at our pack size (97.50 per 100 g is 975 for our 1 kg).
+  const theirs = m.item.loose ? m.compare_price : m.item.last_price
+  if (!theirs || !m.our_price) return false
+  const ratio = toCents(theirs) / toCents(m.our_price)
   return ratio > 2 || ratio < 0.5
 }
 
@@ -455,9 +458,13 @@ export default function MatchQueue() {
                             )}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
-                            <strong className="num" style={{ fontSize: 14, color: '#0F172A' }}>
-                              Rs {m.item.last_price ? formatMoney(m.item.last_price) : '—'}
-                            </strong>
+                            {m.item.loose ? (
+                              <BulkPrice item={m.item} comparePrice={m.compare_price} canEdit={decide} />
+                            ) : (
+                              <strong className="num" style={{ fontSize: 14, color: '#0F172A' }}>
+                                Rs {m.item.last_price ? formatMoney(m.item.last_price) : '—'}
+                              </strong>
+                            )}
                             {m.item.last_mrp && (
                               <span style={{ fontSize: 12, color: '#64748B' }}>
                                 MRP: Rs {formatMoney(m.item.last_mrp)}
@@ -479,7 +486,9 @@ export default function MatchQueue() {
                             {isFar ? (
                               <Popconfirm
                                 title="Noticeable Price Difference"
-                                description={`They sell at Rs ${formatMoney(m.item.last_price)}, our price is Rs ${formatMoney(m.our_price)}. Are you sure this is the same product pack and size?`}
+                                description={m.item.loose
+                                  ? `At our pack size they sell at Rs ${formatMoney(m.compare_price)}, our price is Rs ${formatMoney(m.our_price)}. Is the amount their price is for right?`
+                                  : `They sell at Rs ${formatMoney(m.item.last_price)}, our price is Rs ${formatMoney(m.our_price)}. Are you sure this is the same product pack and size?`}
                                 okText="Yes, Same Product"
                                 cancelText="Cancel"
                                 onConfirm={() => act.mutate({ id: m.match_id, verb: 'confirm' })}

@@ -30,6 +30,7 @@ import { formatMoney, isValidAmount } from '../api/money'
 import { ago, formatTime } from '../api/time'
 import type { HistoryPoint, ProductRow } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+import BulkPrice from '../components/BulkPrice'
 
 export default function ProductDrawer({
   productId,
@@ -254,7 +255,12 @@ export default function ProductDrawer({
                 {
                   title: 'Price',
                   align: 'right',
-                  render: (_, cp) => (
+                  render: (_, cp) => cp.item.loose ? (
+                    <div style={{ opacity: cp.fresh ? 1 : 0.6 }}>
+                      <BulkPrice item={cp.item} comparePrice={cp.compare_price}
+                        canEdit={can('matches.decide')} />
+                    </div>
+                  ) : (
                     <span
                       className="num"
                       style={{
