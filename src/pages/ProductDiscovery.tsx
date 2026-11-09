@@ -8,6 +8,7 @@ import {
 } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  Alert,
   App,
   Button,
   Card,
@@ -15,6 +16,8 @@ import {
   Col,
   Image,
   Input,
+  Modal,
+  Radio,
   Row,
   Select,
   Space,
@@ -95,7 +98,7 @@ export default function ProductDiscovery() {
   const [params, setParams] = useSearchParams()
 
   const competitorsQuery = useCompetitors()
-  const competitors = competitorsQuery.data || []
+  const competitors = (competitorsQuery.data || []).filter((c) => c.kind === 'scraped')
 
   // URL search state
   const competitorIdParam = params.get('competitor')
@@ -107,6 +110,19 @@ export default function ProductDiscovery() {
 
   const [searchTerm, setSearchTerm] = useState(params.get('q') || '')
   const [debouncedQ, setDebouncedQ] = useState(searchTerm)
+
+  // Confirmation modal state
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [crawlMode, setCrawlMode] = useState<'all' | 'specific'>('all')
+  const cargillsComp = competitors.find((c) => c.code === 'cargills')
+  const defaultSpecificId = competitorId || cargillsComp?.competitor_id || competitors[0]?.competitor_id
+  const [selectedSpecificId, setSelectedSpecificId] = useState<number | undefined>(defaultSpecificId)
+
+  useEffect(() => {
+    if (defaultSpecificId && !selectedSpecificId) {
+      setSelectedSpecificId(defaultSpecificId)
+    }
+  }, [defaultSpecificId])
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -175,18 +191,34 @@ export default function ProductDiscovery() {
       ).data,
   })
 
-  // Manual Trigger Crawl
+  // Manual Trigger Crawl (single or all)
   const crawlMutation = useMutation({
-    mutationFn: (targetId: number) => api.post(`/assortment/crawl/${targetId}`),
-    onSuccess: () => {
-      message.success('Discovery crawl started in the background.')
+    mutationFn: (targetId: number | null) =>
+      api.post('/assortment/crawl', {
+        competitor_id: targetId,
+      }),
+    onSuccess: (_, targetId) => {
+      setIsModalOpen(false)
+      const targetName = targetId
+        ? competitors.find((c) => c.competitor_id === targetId)?.name || 'competitor'
+        : 'all competitors'
+      message.success(`Discovery crawl started for ${targetName} in the background.`)
       queryClient.invalidateQueries({ queryKey: ['discovery-crawl-status'] })
     },
     onError: (err) => message.error(errorMessage(err)),
   })
 
-  const cargillsComp = competitors.find((c) => c.code === 'cargills')
-  const defaultCrawlTarget = competitorId || cargillsComp?.competitor_id || competitors[0]?.competitor_id
+  const handleStartCrawl = () => {
+    if (crawlMode === 'all') {
+      crawlMutation.mutate(null)
+    } else {
+      if (!selectedSpecificId) {
+        message.warning('Please select a competitor to crawl.')
+        return
+      }
+      crawlMutation.mutate(selectedSpecificId)
+    }
+  }
 
   const columns: ColumnsType<AssortmentItem> = [
     {
@@ -194,7 +226,7 @@ export default function ProductDiscovery() {
       dataIndex: 'name',
       key: 'name',
       render: (_, item) => (
-        <Space orientation="horizontal" size={12} align="center">
+        <Space size={12} align="center">
           <ProductThumb src={item.image_url} />
           <div>
             <Typography.Text strong style={{ fontSize: 13, display: 'block' }}>
@@ -305,7 +337,7 @@ export default function ProductDiscovery() {
         title="Product Discovery & Assortment Gaps"
         subtitle="Catalog products found at competitors that Sribees does not stock or match yet"
         extra={
-          can('scrape.run') && defaultCrawlTarget ? (
+          can('scrape.run') ? (
             <Space>
               {isCrawlRunning && (
                 <Tag icon={<SyncOutlined spin />} color="processing">
@@ -315,8 +347,8 @@ export default function ProductDiscovery() {
               <Button
                 type="primary"
                 icon={<SyncOutlined spin={isCrawlRunning} />}
-                loading={crawlMutation.isPending || isCrawlRunning}
-                onClick={() => crawlMutation.mutate(defaultCrawlTarget)}
+                loading={isCrawlRunning}
+                onClick={() => setIsModalOpen(true)}
                 style={{ background: '#E11D48', borderColor: '#E11D48' }}
               >
                 {isCrawlRunning ? 'Scraping...' : 'Run Discovery Crawl'}
@@ -325,6 +357,78 @@ export default function ProductDiscovery() {
           ) : undefined
         }
       />
+
+      {/* Crawl Confirmation Dialog Modal */}
+      <Modal
+        title={
+          <Space>
+            <CompassOutlined style={{ color: '#E11D48', fontSize: 18 }} />
+            <span>Run Product Discovery Crawl</span>
+          </Space>
+        }
+        open={isModalOpen}
+        onCancel={() => setIsModalOpen(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setIsModalOpen(false)}>
+            Cancel
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            icon={<SyncOutlined />}
+            loading={crawlMutation.isPending}
+            onClick={handleStartCrawl}
+            style={{ background: '#E11D48', borderColor: '#E11D48' }}
+          >
+            Start Crawl
+          </Button>,
+        ]}
+      >
+        <Alert
+          type="info"
+          showIcon
+          style={{ margin: '16px 0', fontSize: 13 }}
+          message="Polite Background Crawling"
+          description="The bot queries competitor categories at a polite rate (5s delay) to avoid site blocks or IP bans. You can close this dialog and continue using Sribees while it runs in the background."
+        />
+
+        <Typography.Text strong style={{ display: 'block', marginBottom: 10 }}>
+          Select target store to discover:
+        </Typography.Text>
+
+        <Radio.Group
+          value={crawlMode}
+          onChange={(e) => setCrawlMode(e.target.value)}
+          style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 12 }}
+        >
+          <Radio value="all">
+            <Typography.Text strong>All Competitors</Typography.Text>
+            <div style={{ color: '#64748B', fontSize: 12, marginTop: 2 }}>
+              Crawls all active competitors (Cargills, SPAR, Nexmart...) sequentially and updates missing items across the entire market.
+            </div>
+          </Radio>
+
+          <Radio value="specific">
+            <Typography.Text strong>Specific Competitor</Typography.Text>
+            <div style={{ color: '#64748B', fontSize: 12, marginTop: 2 }}>
+              Crawl only a single selected supermarket:
+            </div>
+            {crawlMode === 'specific' && (
+              <div style={{ marginTop: 8, paddingLeft: 4 }}>
+                <Select
+                  value={selectedSpecificId}
+                  onChange={(val) => setSelectedSpecificId(val)}
+                  style={{ width: 240 }}
+                  options={competitors.map((c) => ({
+                    label: c.name,
+                    value: c.competitor_id,
+                  }))}
+                />
+              </div>
+            )}
+          </Radio>
+        </Radio.Group>
+      </Modal>
 
       {/* Metric Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
