@@ -10,6 +10,7 @@ const ManualPrices = lazy(() => import('./pages/ManualPrices'))
 const MatchHealth = lazy(() => import('./pages/MatchHealth'))
 const MatchQueue = lazy(() => import('./pages/MatchQueue'))
 const Overview = lazy(() => import('./pages/Overview'))
+const ProductDiscovery = lazy(() => import('./pages/ProductDiscovery'))
 const Products = lazy(() => import('./pages/Products'))
 const Sessions = lazy(() => import('./pages/Sessions'))
 const Settings = lazy(() => import('./pages/Settings'))
@@ -38,6 +39,7 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route index element={can('reports.read') ? <Overview /> : <Navigate to="/products" replace />} />
           <Route path="products" element={guarded('prices.read', <Products />)} />
+          <Route path="discovery" element={guarded('products.read', <ProductDiscovery />)} />
           <Route path="suggestions" element={guarded('suggestions.read', <Suggestions />)} />
           <Route path="matches" element={guarded('matches.read', <MatchQueue />)} />
           <Route path="match-health" element={guarded('matches.read', <MatchHealth />)} />
