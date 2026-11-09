@@ -237,3 +237,41 @@ export interface PricingSettings {
   min_margin_pct: string | number
   stale_days: Record<'daily' | 'weekly' | 'monthly' | 'long', number>
 }
+
+export interface AssortmentItem {
+  item_id: string
+  competitor_id: number
+  competitor_name: string
+  name: string
+  brand: string | null
+  barcode: string | null
+  size_value: string | null
+  size_unit: string | null
+  url: string | null
+  image_url: string | null
+  last_price: string | null
+  last_mrp: string | null
+  in_stock: boolean
+  first_seen_at: string
+  last_seen_at: string
+}
+
+export interface AssortmentPage {
+  items: AssortmentItem[]
+  total: number
+  page: number
+  pages: number
+}
+
+export interface AssortmentStats {
+  total_gaps: number
+  in_stock_gaps: number
+  new_this_week: number
+}
+
+export interface CrawlStatus {
+  is_running: boolean
+  competitor_id: number | null
+  message: string | null
+}
+
